@@ -1,0 +1,64 @@
+This project requires the following installations - 
+
+Apache Spark v2.4.4
+Apache Kafka v2.1.1
+Apache Cassandra v3.11.5
+Python v3.6.8
+
+## Python dependencies
+	Install the dependencies in the requirements.txt using pip 
+	
+	pip3 install -r requirements.txt
+
+Please make sure that the above listed services/softwares/dependencies are installed/running before proceeding.
+
+There is a config.yml YAML file in the project base directory. You can specify configurations based on your environment. 
+
+
+
+Steps for running
+-----------------
+
+1) Create a topic in Kafka (where the producer code will write the data) and add the topic name, kafka connection url 
+in config.yml. The command to create the topic is as follows - 
+
+sudo bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic <topic-name>
+
+(The above command was used for our local setup. You'll have to tweak it based on your system configurations)
+
+
+2) Create a keyspace and a table with the below schema in Cassandra. Update the same along with the cassandra url in the config.yml.
+
+CREATE TABLE <KEYSPACE>.<TABLENAME> (date date, tweet text, hashtags text, sentiment float, sentiment_category text, party text, uuid text primary key)
+
+
+3) Open the scripts directory and run the Spark-Streaming script with the following command - 
+
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.4,datastax:spark-cassandra-connector:2.4.0-s_2.11 process_tweets_stream.py
+
+This will start the spark streaming program which is now listening to the topic you created earlier in Kafka. As soon as the data starts pouring in
+it will process it and dump it to the cassandra datastore created in the last step.
+
+
+4) Run the python Kafka producer with the following command - 
+
+python3 stream_file.py <filepath for TWEETS.txt>
+
+This script will write the tweets line by line to the Kafka topic through which it'll be consumed by the process_tweets_stream.py streaming code.
+
+
+5) Once the streaming has started, we can run process_cassandra_data.py script in a new terminal - 
+
+spark-submit --packages datastax:spark-cassandra-connector:2.4.0-s_2.11 process_cassandra_data.py
+
+This will start the aggregations on the processed cassandra data and write the results in the output directory in csv format for our dashboard to consume.
+We can run this periodically using a cron job because as the data streams in, it will perform aggregations on the latest and greatest data.
+
+
+6) In a separate terminal, we'll run the Dash/Plotly powered dashboard using the following command - 
+
+python3 dashboard.py
+
+You can monitor the UI for the dashboard at the default url - http://127.0.0.1:8050/
+
+Every time the data gets updated through Step-5, the dashboard will update through it's hot-update feature. 

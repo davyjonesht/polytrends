@@ -1,0 +1,11 @@
+kafka:
+    topic_name: test
+    topic_url: 127.0.0.1:9092
+    
+cassandra: 
+    url: localhost
+    keyspace: data
+    tablename: datastore_dummy
+    
+output:
+    dir: output    
